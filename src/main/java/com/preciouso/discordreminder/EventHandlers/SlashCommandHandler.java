@@ -1,7 +1,7 @@
 package com.preciouso.discordreminder.EventHandlers;
 
-import Util.ModalWithAction;
-import Util.MessageInteractionCallbackStore;
+import com.preciouso.discordreminder.Util.ModalWithAction;
+import com.preciouso.discordreminder.Util.MessageInteractionCallbackStore;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;

@@ -1,13 +1,9 @@
 package com.preciouso.discordreminder.EventHandlers;
 
-import Util.MessageInteractionCallbackStore;
-import Util.ModalWithAction;
-import Util.StringSelectDropdownWithAction;
-import net.dv8tion.jda.api.entities.Message;
+import com.preciouso.discordreminder.Util.MessageInteractionCallbackStore;
+import com.preciouso.discordreminder.Util.StringSelectDropdownWithAction;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 public class SelectStringDropdownHandler extends ListenerAdapter {
     @Override

@@ -1,8 +1,8 @@
 package com.preciouso.discordreminder;
 
-import Util.MessageInteractionCallbackStore;
-import Util.ModalWithAction;
-import Util.StringSelectDropdownWithAction;
+import com.preciouso.discordreminder.Util.MessageInteractionCallbackStore;
+import com.preciouso.discordreminder.Util.ModalWithAction;
+import com.preciouso.discordreminder.Util.StringSelectDropdownWithAction;
 import net.dv8tion.jda.api.entities.EmbedType;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;

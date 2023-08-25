@@ -1,4 +1,4 @@
-package Util;
+package com.preciouso.discordreminder.Util;
 
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 

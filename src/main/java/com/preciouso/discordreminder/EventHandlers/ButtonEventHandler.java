@@ -1,8 +1,6 @@
 package com.preciouso.discordreminder.EventHandlers;
 
-import Util.MessageInteractionCallbackStore;
-import Util.ModalWithAction;
-import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
+import com.preciouso.discordreminder.Util.MessageInteractionCallbackStore;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
