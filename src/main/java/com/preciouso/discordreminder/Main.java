@@ -25,16 +25,16 @@ public class Main {
     private static final String iconUrl = "https://gist.githubusercontent.com/Kyu/ed47af2ee6c65fda1fbabbfb4e472de1/raw/2c92a61e6d38e1d805eac66aa729ad7a5187b260/alarm_FILL0_wght400_GRAD0_opsz48.png";
 
     public static void main(String[] args) {
-        JDAInstance.buildJda();
+        String discordToken = System.getenv("JDA_DISCORD_TOKEN");
+        if (discordToken == null || discordToken.isEmpty()) {
+            throw new RuntimeException("No JDA_DISCORD_TOKEN exists in Environment Arguments! Exiting");
+        }
 
+        JDAInstance.buildJda(discordToken);
         registerNewReminderModal();
     }
 
-    // TODO Aug 25 -- register selectmenus, registerselectbuttons, register new timezone selectmenu
-    // TODO Aug 25 -- do saving reminder to database
-    // TODO Aug 25 -- do actually reminding users
-    // TODO Aug 25 -- do editing past reminders
-    private static void registerNewReminderModal() {
+    private static void registerTimeSelectionDropdown() {
         // ---- Select dropdown of when a user wants to be reminded ---- \\
         SelectOption onTimeOption = SelectOption.of("On Time", "on-time").withDescription("Sets a reminder at the exact time.");
         SelectOption twelveHoursOption = SelectOption.of("12 hours before", "12h-before").withDescription("Sets a reminder 12 hours before.");
@@ -51,7 +51,9 @@ public class Main {
 
         StringSelectDropdownWithAction selectReminderTimeMenu = new StringSelectDropdownWithAction("choose-time", "Remind me ...", 0, 4, false, selectOptionsList, selectAction);
         MessageInteractionCallbackStore.registerStringSelectDropDown(selectReminderTimeMenu.getId(), selectReminderTimeMenu);
+    }
 
+    private static void registerCustomTimeSelectionModal() {
         // ---- Select button with custom input of when a user wants to be reminded ---- \\
 
         // modal that the button pops up
@@ -77,10 +79,22 @@ public class Main {
         List<LayoutComponent> customTimeModalRows = Arrays.asList(ActionRow.of(timeUnit), ActionRow.of(timeAmount));
         ModalWithAction customTimeModal = new ModalWithAction("custom-time-reminder", "Remind me ...", customTimeModalRows, customTimeModalAction);
         MessageInteractionCallbackStore.registerModal(customTimeModal.getId(), customTimeModal);
+    }
+
+    // TODO Aug 25 -- register selectmenus, registerselectbuttons, register new timezone selectmenu
+    // TODO Aug 25 -- do saving reminder to database
+    // TODO Aug 25 -- do actually reminding users
+    // TODO Aug 25 -- do editing past reminders
+    private static void registerNewReminderModal() {
+        registerTimeSelectionDropdown();
+        registerCustomTimeSelectionModal();
 
 
         Function<ButtonInteractionEvent, Void> selectTimesAction = (eventData) -> {
-            eventData.replyModal(customTimeModal).queue();
+            ModalWithAction timeModal = MessageInteractionCallbackStore.getModal("custom-time-reminder");
+            if (timeModal != null) {
+                eventData.replyModal(timeModal).queue();
+            }
             return null;
         };
 
@@ -125,8 +139,9 @@ public class Main {
 
         Function<ModalInteractionEvent, Void> modalAction = (eventData) ->  {
             // eventData.getValues().forEach((x) -> System.out.println(x.getAsString()));
+
             eventData.reply("")
-                    .addActionRow(selectReminderTimeMenu)
+                    .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
                     .addActionRow(selectTimesButton)
                     .addEmbeds(createReminderEmbed(eventData))
                     .queue();

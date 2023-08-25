@@ -15,20 +15,19 @@ import org.jetbrains.annotations.NotNull;
 
 public class JDAInstance implements EventListener {
     private static JDA jda;
-    private static final String token = "MTE0NDMyMzY4ODE5MjI5MDgyNg.Gehj1V.Mzkm_Qq8wB1TL49lyms7BCE77qfUWT99Dlyv3M";
     public static final String permissionsInteger = "826781322304"; // https://discord.com/api/oauth2/authorize?client_id=826781322304&permissions=536870912&scope=bot%20applications.commands
 
-    public static JDA buildJda() {
-        if (jda == null) {
-            JDABuilder jdaBuilder = JDABuilder.createDefault(token);
-            jdaBuilder.setActivity(Activity.watching("the Clock"));
-            jdaBuilder.addEventListeners(new JDAInstance());
-            jda = jdaBuilder.build();
-
-            addJdaCommands();
-        }
-
+    public static JDA getJDA() {
         return jda;
+    }
+    public static void buildJda(String token) {
+        JDABuilder jdaBuilder = JDABuilder.createDefault(token);
+        jdaBuilder.setActivity(Activity.watching("the Clock"));
+        jdaBuilder.addEventListeners(new JDAInstance());
+        jda = jdaBuilder.build();
+
+        addJdaCommands();
+
     }
 
     @Override
