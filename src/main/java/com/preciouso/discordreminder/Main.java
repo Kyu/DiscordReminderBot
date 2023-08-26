@@ -1,5 +1,6 @@
 package com.preciouso.discordreminder;
 
+import com.preciouso.discordreminder.Util.DateTimeParser;
 import com.preciouso.discordreminder.Util.MessageInteractionCallbackStore;
 import com.preciouso.discordreminder.Util.ModalWithAction;
 import com.preciouso.discordreminder.Util.StringSelectDropdownWithAction;
@@ -16,6 +17,7 @@ import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -109,7 +111,7 @@ public class Main {
                 .build();
 
         TextInput date = TextInput.create("date", "Date", TextInputStyle.SHORT)
-                .setPlaceholder("Date format: DD-MM-YYYY or DD-MM")
+                .setPlaceholder("Date format: MM-DD-YYYY or MM-DD")
                 .setMinLength(5)
                 .setMaxLength(10)
                 .build();
@@ -139,13 +141,33 @@ public class Main {
 
         Function<ModalInteractionEvent, Void> modalAction = (eventData) ->  {
             // eventData.getValues().forEach((x) -> System.out.println(x.getAsString()));
+            DateTimeParser eventDateTime = doShitWithModalData(eventData);
 
-            eventData.reply("")
-                    .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
-                    .addActionRow(selectTimesButton)
-                    .addEmbeds(createReminderEmbed(eventData))
-                    .queue();
-            eventData.getHook().retrieveOriginal().queue(x -> System.out.println("New Submission: id=" + x.getId()));
+            if (! eventDateTime.isValid()) {
+                String errorString = "";
+                if (! eventDateTime.isValidDate()) {
+                    errorString += "Invalid Date: **" + eventDateTime.getDateString() + "**. ";
+                }
+                if (! eventDateTime.isValidTime()) {
+                    errorString += "Invalid Time: **" + eventDateTime.getTimeString() + "**. ";
+                }
+
+                eventData
+                        .reply(errorString + "\n\n" +
+                                "Remember Date Format: __MM-DD-YYYY__ or __MM-DD__, and Time Format __HH:MM__ or __HH:MM AM/PM__"
+                        )
+                        .setEphemeral(true)
+                        .queue();
+            } else {
+                eventData.reply("")
+                        .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
+                        .addActionRow(selectTimesButton)
+                        .addEmbeds(createReminderEmbed(eventData, eventDateTime))
+                        .queue();
+
+                eventData.getHook().retrieveOriginal().queue(x -> System.out.println("New Submission: id=" + x.getId()));
+            }
+
             return null;
         };
 
@@ -154,7 +176,12 @@ public class Main {
         MessageInteractionCallbackStore.registerModal(modal.getId(), modal);
     }
 
-    private static MessageEmbed createReminderEmbed(ModalInteractionEvent event) {
+
+    private static MessageEmbed createAskDateTimeDropDown(ModalInteractionEvent event, LocalDateTime dateTimeInfo) {
+        return null;
+    }
+
+    private static MessageEmbed createReminderEmbed(ModalInteractionEvent event, DateTimeParser dateTimeInfo) {
         ModalMapping subject = event.getValue("subject");
         String subjectString = subject == null ? "" : subject.getAsString();
 
@@ -189,5 +216,27 @@ public class Main {
         return new MessageEmbed(embedUrl, subjectString, "", EmbedType.RICH,
                 null, 0x0099FF, null, null, authorInfo, null, null, null,
                 allFields);
+    }
+
+    private static DateTimeParser doShitWithModalData(ModalInteractionEvent event) {
+        ModalMapping date = event.getValue("date");
+        String dateString = "";
+        if (date != null) {
+            String dateEntry = date.getAsString();
+            if (! dateEntry.isEmpty()) {
+                dateString = dateEntry;
+            }
+        }
+
+        ModalMapping time = event.getValue("time");
+        String timeString = "00:00";
+        if (time != null) {
+            String timeEntry = time.getAsString();
+            if (! timeEntry.isEmpty()) {
+                timeString = timeEntry;
+            }
+        }
+
+        return new DateTimeParser().ofDate(dateString).ofTime(timeString);
     }
 }
