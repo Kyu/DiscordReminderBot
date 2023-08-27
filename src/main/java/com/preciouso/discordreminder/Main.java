@@ -18,22 +18,58 @@ import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 public class Main {
     private static final String iconUrl = "https://gist.githubusercontent.com/Kyu/ed47af2ee6c65fda1fbabbfb4e472de1/raw/2c92a61e6d38e1d805eac66aa729ad7a5187b260/alarm_FILL0_wght400_GRAD0_opsz48.png";
-
+    private static final ArrayList<String> timezoneList = new ArrayList<>();
+    private static final HashMap<String, ReminderSubmission> reminderSumbissions = new HashMap<>();
     public static void main(String[] args) {
         String discordToken = System.getenv("JDA_DISCORD_TOKEN");
         if (discordToken == null || discordToken.isEmpty()) {
             throw new RuntimeException("No JDA_DISCORD_TOKEN exists in Environment Arguments! Exiting");
         }
 
+        for (String tzString: TimeZone.getAvailableIDs()) {
+            if (! tzString.contains("Etc")  && tzString.chars().filter(chr -> chr == '/').count() == 1) {
+                timezoneList.add(tzString);
+            } else if (tzString.contains("Etc/GMT")) {
+                String[] gmtSplit = tzString.split("/");
+                if (gmtSplit.length > 1) {
+                    String gmtString = gmtSplit[1];
+                    String gmtSpaceString = gmtString.replaceFirst("GMT", "GMT ");
+                    String utcString = gmtString.replaceFirst("GMT", "UTC");
+                    String utcSpaceString = gmtString.replaceFirst("GMT", "UTC ");
+
+                    timezoneList.add(gmtString);
+                    timezoneList.add(gmtSpaceString);
+                    timezoneList.add(utcString);
+                    timezoneList.add(utcSpaceString);
+                }
+            }
+        }
+
         JDAInstance.buildJda(discordToken);
+        registerTimezonePicker();
+        registerTimeZoneSelectorModal();
         registerNewReminderModal();
+    }
+
+    public static boolean isInteger(String s) {
+        return isInteger(s,10);
+    }
+
+    private static boolean isInteger(String s, int radix) {
+        if(s.isEmpty()) return false;
+        for(int i = 0; i < s.length(); i++) {
+            if(i == 0 && (s.charAt(i) == '-') || s.charAt(i) == '+') {
+                if(s.length() == 1) return false;
+                else continue;
+            }
+            if(Character.digit(s.charAt(i),radix) < 0) return false;
+        }
+        return true;
     }
 
     private static void registerTimeSelectionDropdown() {
@@ -47,7 +83,6 @@ public class Main {
 
         Function<StringSelectInteractionEvent, Void> selectAction = (eventData) ->  {
             eventData.reply("You chose " + String.join(", ", eventData.getValues())).setEphemeral(true).queue();
-            System.out.println("replied to msg=" + eventData.getMessageId());
             return null;
         };
 
@@ -61,7 +96,7 @@ public class Main {
         // modal that the button pops up
         Function<ModalInteractionEvent, Void> customTimeModalAction = (eventData) -> {
             ArrayList<String> tmp = new ArrayList<>();
-            eventData.getValues().forEach(x -> tmp.add(x.getAsString()));
+            eventData.getValues().forEach(x -> tmp.add(x.getAsString())); // TODO Aug 27 -- check if time units are valid (mins, hours, days)
             eventData.reply("You picked " + String.join(", ", tmp)).setEphemeral(true).queue();
             return null;
         };
@@ -100,8 +135,7 @@ public class Main {
             return null;
         };
 
-        Button selectTimesButton = Button.primary("select-times", "Select custom reminder");
-        MessageInteractionCallbackStore.registerButton(selectTimesButton.getId(), selectTimesAction);
+        MessageInteractionCallbackStore.registerButton("select-times", selectTimesAction);
 
         // ---- Modal to create the actual reminder ---- \\
         TextInput subject = TextInput.create("subject", "Subject", TextInputStyle.SHORT)
@@ -123,25 +157,23 @@ public class Main {
                 .setMaxLength(8)
                 .build();
 
-        TextInput timezone = TextInput.create("timezone", "timezone", TextInputStyle.SHORT)
-                .setPlaceholder("UTC offset or timezone identifier. Defaults to 0.")
-                .setRequired(false)
-                .setValue("CST")
-                .setMinLength(2)
-                .setMaxLength(3)
-                .build();
-
         TextInput description = TextInput.create("description", "Description", TextInputStyle.PARAGRAPH)
                 .setPlaceholder("Subject of this reminder")
                 .setRequired(false)
                 .build();
 
         List<LayoutComponent> places = Arrays.asList(ActionRow.of(subject), ActionRow.of(date), ActionRow.of(time),
-                ActionRow.of(timezone), ActionRow.of(description));
+                ActionRow.of(description));
 
+        ModalWithAction modal = getModalWithAction(places);
+        MessageInteractionCallbackStore.registerModal(modal.getId(), modal);
+    }
+
+    // TODO Aug 26 -- rename
+    private static ModalWithAction getModalWithAction(List<LayoutComponent> places) {
         Function<ModalInteractionEvent, Void> modalAction = (eventData) ->  {
             // eventData.getValues().forEach((x) -> System.out.println(x.getAsString()));
-            DateTimeParser eventDateTime = doShitWithModalData(eventData);
+            DateTimeParser eventDateTime = validateDateTimeSubmission(eventData);
 
             if (! eventDateTime.isValid()) {
                 String errorString = "";
@@ -159,11 +191,17 @@ public class Main {
                         .setEphemeral(true)
                         .queue();
             } else {
-                eventData.reply("")
+                ReminderSubmission submission = new ReminderSubmission(eventData, eventDateTime);
+
+                reminderSumbissions.put(Objects.requireNonNull(eventData.getMember()).getId(), submission);
+                registerTimeZoneForNewReminder(eventData);
+
+                /*eventData.reply("")
                         .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
                         .addActionRow(selectTimesButton)
                         .addEmbeds(createReminderEmbed(eventData, eventDateTime))
                         .queue();
+                */
 
                 eventData.getHook().retrieveOriginal().queue(x -> System.out.println("New Submission: id=" + x.getId()));
             }
@@ -172,39 +210,101 @@ public class Main {
         };
 
         String modalId = "reminderForm";
-        ModalWithAction modal = new ModalWithAction(modalId, "New Reminder", places, modalAction);
-        MessageInteractionCallbackStore.registerModal(modal.getId(), modal);
+        return new ModalWithAction(modalId, "New Reminder", places, modalAction);
     }
 
+    private static void registerTimeZoneSelectorModal() {
+        Button selectTimesButton = Button.primary("select-times", "Select custom times");
+
+        Function<ModalInteractionEvent, Void> modalAction = (eventData) ->  {
+            ModalMapping m = eventData.getValue("timezone");
+            if (m == null) {
+                return null;
+            }
+
+            String tzString = m.getAsString();
+            if (isInteger(tzString)) {
+                int tzOffset = Integer.parseInt(tzString);
+                if (tzOffset > 0) {
+                    tzString = "GMT+" + tzOffset;
+                } else {
+                    tzString = "GMT" + tzOffset;
+                }
+            }
+
+            if (timezoneList.contains(tzString)) {
+                ReminderSubmission submission = reminderSumbissions.get(Objects.requireNonNull(eventData.getMember()).getId());
+                if (submission != null) {
+                    submission.setTimeZone(tzString);
+                    reminderSumbissions.put(eventData.getMember().getId(), submission);
+
+                    eventData.reply("")
+                            .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
+                            .addActionRow(selectTimesButton)
+                            .addEmbeds(createReminderEmbed(eventData))
+                            .queue();
+                }
+            } else {
+                eventData.reply("Could not find a valid timezone for **" + m.getAsString() + "**.")
+                        .setEphemeral(true)
+                        .queue();
+            }
+
+            return null;
+        };
+
+        TextInput timezone = TextInput.create("timezone", "Timezone for this reminder", TextInputStyle.SHORT)
+                .setPlaceholder("(Continent/Region) or (UTC +x) or (+x) are allowed")
+                .setMinLength(1)
+                .setRequired(false)
+                .build();
+
+        List<LayoutComponent> places = List.of(ActionRow.of(timezone));
+
+        String modalId = "timezone-picker";
+        ModalWithAction timezoneModal = new ModalWithAction(modalId, "Select a Timezone", places, modalAction);
+        MessageInteractionCallbackStore.registerModal(modalId, timezoneModal);
+    }
+
+    private static void registerTimezonePicker() {
+        Function<ButtonInteractionEvent, Void> selectTimesAction = (eventData) -> {
+            // timezoneSelectorForm
+            ModalWithAction timeModal = MessageInteractionCallbackStore.getModal("timezone-picker");
+            if (timeModal != null) {
+                eventData.replyModal(timeModal).queue();
+            }
+            return null;
+        };
+
+        // TODO Aug 27 -- add a "i remember your timezone" button, also populate modal.value with same
+        MessageInteractionCallbackStore.registerButton("select-timezone", selectTimesAction);
+    }
+
+    private static void registerTimeZoneForNewReminder(ModalInteractionEvent event) {
+        Button selectTimezoneButton = Button.primary("select-timezone", "Select timezone"); // todo is string
+
+        event.reply("Please enter your timezone region. You can use https://kevinnovak.github.io/Time-Zone-Picker/ for help!")
+                .addActionRow(selectTimezoneButton)
+                .setEphemeral(true)
+                .queue();
+
+        event.getHook().retrieveOriginal().queue(x -> System.out.println("New rtz: id=" + x.getId()));
+    }
 
     private static MessageEmbed createAskDateTimeDropDown(ModalInteractionEvent event, LocalDateTime dateTimeInfo) {
         return null;
     }
 
-    private static MessageEmbed createReminderEmbed(ModalInteractionEvent event, DateTimeParser dateTimeInfo) {
-        ModalMapping subject = event.getValue("subject");
-        String subjectString = subject == null ? "" : subject.getAsString();
-
-        ModalMapping description = event.getValue("description");
-        String descriptionString = description == null ? "" : description.getAsString();
-
-        ModalMapping date = event.getValue("date");
-        String dateString = date == null ? "" : date.getAsString();
-
-        ModalMapping time = event.getValue("time");
-        String timeString = time == null ? "" : time.getAsString();
-
-        ModalMapping timezone = event.getValue("timezone");
-        String timeZoneString = timezone == null ? "+0" : timezone.getAsString();
+    private static MessageEmbed createReminderEmbed(ModalInteractionEvent event) {
+        ReminderSubmission reminderSubmission = reminderSumbissions.get(Objects.requireNonNull(event.getMember()).getId());
 
         MessageEmbed.AuthorInfo authorInfo = new MessageEmbed.AuthorInfo("New Reminder!", "", iconUrl, "");
 
-        MessageEmbed.Field descriptionField = new MessageEmbed.Field("Description", descriptionString, false);
-        MessageEmbed.Field dateField = new MessageEmbed.Field("Date", dateString, true);
-        MessageEmbed.Field timeField = new MessageEmbed.Field("Time", timeString, true);
+        MessageEmbed.Field descriptionField = new MessageEmbed.Field("Description", reminderSubmission.getDescription(), false);
+        MessageEmbed.Field timeField = new MessageEmbed.Field("Time", reminderSubmission.getFormattedTime(), true);
 
-        ArrayList<MessageEmbed.Field> allFields = new ArrayList<>(Arrays.asList(dateField, timeField));
-        if (!descriptionString.isEmpty()) {
+        ArrayList<MessageEmbed.Field> allFields = new ArrayList<>(List.of(timeField));
+        if (! reminderSubmission.getDescription().isEmpty()) {
             allFields.add(descriptionField);
         }
 
@@ -213,12 +313,12 @@ public class Main {
             embedUrl = event.getMessage().getJumpUrl();
         }
 
-        return new MessageEmbed(embedUrl, subjectString, "", EmbedType.RICH,
+        return new MessageEmbed(embedUrl, reminderSubmission.getSubject(), "", EmbedType.RICH,
                 null, 0x0099FF, null, null, authorInfo, null, null, null,
                 allFields);
     }
 
-    private static DateTimeParser doShitWithModalData(ModalInteractionEvent event) {
+    private static DateTimeParser validateDateTimeSubmission(ModalInteractionEvent event) {
         ModalMapping date = event.getValue("date");
         String dateString = "";
         if (date != null) {
