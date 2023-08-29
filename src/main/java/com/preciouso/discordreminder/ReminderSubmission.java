@@ -1,18 +1,22 @@
 package com.preciouso.discordreminder;
 
+import com.preciouso.discordreminder.Database.Entities.Reminder;
 import com.preciouso.discordreminder.Util.DateTimeParser;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Objects;
 import java.util.TimeZone;
 
 public class ReminderSubmission {
     private final String subject;
     private final String description;
     private final LocalDateTime localDateTime;
+    private Date actualDate;
     private TimeZone timezone;
+    private final String creatorId;
 
     public ReminderSubmission(ModalInteractionEvent event, DateTimeParser dateTimeParser) {
         ModalMapping subject = event.getValue("subject");
@@ -24,11 +28,18 @@ public class ReminderSubmission {
         this.subject = subjectString;
         this.description = descriptionString;
         this.localDateTime = dateTimeParser.getDateTime();
+        this.creatorId = Objects.requireNonNull(event.getMember()).getId();
+    }
+
+    public TimeZone getTimezone() {
+        return timezone;
     }
 
     public void setTimeZone(String timezone) {
         timezone = timezone.replace("UTC", "GMT").strip();
         this.timezone = TimeZone.getTimeZone(timezone);
+
+        actualDate = Date.from(localDateTime.atZone(this.timezone.toZoneId()).toInstant());
     }
 
     public String getSubject() {
@@ -48,7 +59,10 @@ public class ReminderSubmission {
             return "";
         }
 
-        Date date = Date.from(localDateTime.atZone(timezone.toZoneId()).toInstant());
-        return "<t:" + date.getTime() / 1000L + ">";
+        return "<t:" + actualDate.getTime() / 1000L + ">";
+    }
+
+    public Reminder toReminderEntity(String originalMessageId) {
+        return new Reminder(subject, description, actualDate, originalMessageId, creatorId);
     }
 }
