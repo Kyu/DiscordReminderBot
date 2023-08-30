@@ -5,7 +5,9 @@ import com.j256.ormlite.table.DatabaseTable;
 
 @DatabaseTable(tableName = "users")
 public class User {
-    @DatabaseField(id = true)
+    public static final String ID_COLUMN_NAME = "id";
+
+    @DatabaseField(id = true, columnName = ID_COLUMN_NAME)
     private String id;
 
     @DatabaseField

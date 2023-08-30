@@ -1,5 +1,7 @@
 package com.preciouso.discordreminder;
 
+import com.j256.ormlite.stmt.QueryBuilder;
+import com.j256.ormlite.stmt.Where;
 import com.preciouso.discordreminder.Database.DatabaseInit;
 import com.preciouso.discordreminder.Database.Entities.Alert;
 import com.preciouso.discordreminder.Database.Entities.User;
@@ -12,6 +14,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
+import net.dv8tion.jda.api.interactions.Interaction;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
@@ -19,6 +22,7 @@ import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
+import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -32,6 +36,7 @@ public class UITools {
 
     public static void loadUI() {
         loadTimezones();
+        registerReuseTimezoneButton();
         registerTimezonePicker();
         registerTimeZoneSelectorModal();
         registerNewReminderModal();
@@ -249,6 +254,36 @@ public class UITools {
         return new ModalWithAction(modalId, "New Reminder", places, modalAction);
     }
 
+    private static void registerReuseTimezoneButton() {
+        Button selectTimesButton = Button.primary("reuse-timezone", "Select custom times");
+
+        Function<ButtonInteractionEvent, Void> reuseTimezoneAction = (eventData) -> {
+            ReminderSubmission submission = reminderSumbissions.get(Objects.requireNonNull(eventData.getMember()).getId());
+            if (submission != null) {
+                eventData.getHook().retrieveOriginal().queue(x -> {
+                    try {
+                        JDAInstance.getDatabase().getReminderDao().create(submission.toReminderEntity(x.getId()));
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+                if (reminderSumbissions.containsKey(Objects.requireNonNull(eventData.getMember()).getId())) {
+                    eventData.reply("")
+                            .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
+                            .addActionRow(selectTimesButton)
+                            .addEmbeds(createReminderEmbed(eventData))
+                            .queue(x -> reminderSumbissions.remove(eventData.getMember().getId()));
+                } else {
+                }
+            }
+
+            return null;
+        };
+
+        MessageInteractionCallbackStore.registerButton(selectTimesButton.getId(), reuseTimezoneAction);
+    }
+
     private static void registerTimeZoneSelectorModal() {
         Button selectTimesButton = Button.primary("select-times", "Select custom times");
 
@@ -272,14 +307,13 @@ public class UITools {
                 ReminderSubmission submission = reminderSumbissions.get(Objects.requireNonNull(eventData.getMember()).getId());
                 if (submission != null) {
                     submission.setTimeZone(tzString);
-                    reminderSumbissions.put(eventData.getMember().getId(), submission);
+                    // reminderSumbissions.put(eventData.getMember().getId(), submission);
 
                     eventData.getHook().retrieveOriginal().queue(x -> {
                         try {
                             JDAInstance.getDatabase().getReminderDao().create(submission.toReminderEntity(x.getId()));
-
                             JDAInstance.getDatabase().getUserDao()
-                                    .createOrUpdate(new User(Objects.requireNonNull(x.getMember()).getId(), submission.getTimezone().getID()));
+                                    .createOrUpdate(new User(eventData.getMember().getId(), submission.getTimezone().getID()));
                         } catch (SQLException e) {
                             throw new RuntimeException(e);
                         }
@@ -289,7 +323,7 @@ public class UITools {
                             .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
                             .addActionRow(selectTimesButton)
                             .addEmbeds(createReminderEmbed(eventData))
-                            .queue();
+                            .queue(x -> reminderSumbissions.remove(eventData.getMember().getId()));
                     // eventData.getHook().retrieveOriginal().queue(x -> System.out.println("New tzPick: id=" + x.getId()));
                 }
             } else {
@@ -331,11 +365,32 @@ public class UITools {
     private static void registerTimeZoneForNewReminder(ModalInteractionEvent event) {
         Button selectTimezoneButton = Button.primary("select-timezone", "Select timezone"); // todo is string
 
-        event.reply("Please enter your timezone region. You can use https://kevinnovak.github.io/Time-Zone-Picker/ for help!")
-                .addActionRow(selectTimezoneButton)
-                .setEphemeral(true)
-                .queue();
+        QueryBuilder<User, String> userQb = JDAInstance.getDatabase().getUserDao().queryBuilder();
+        Button timezoneButton = null;
 
+        try {
+            Where<User, String> userWhere = userQb.where().eq(User.ID_COLUMN_NAME, event.getUser().getId());
+            User user = JDAInstance.getDatabase().getUserDao().queryForFirst(userWhere.prepare());
+
+            if (user != null) {
+                ReminderSubmission submission = reminderSumbissions.get(user.getId());
+                submission.setTimeZone(user.getTimezone());
+
+                timezoneButton = Button.primary("reuse-timezone", "Use timezone: " + user.getTimezone());
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        ReplyCallbackAction preparedResponse = event.reply("Please enter your timezone region. You can use https://kevinnovak.github.io/Time-Zone-Picker/ for help!")
+                .addActionRow(selectTimezoneButton)
+                .setEphemeral(true);
+
+        if (timezoneButton != null) {
+            preparedResponse = preparedResponse.addActionRow(timezoneButton);
+        }
+
+        preparedResponse.queue();
         // event.getHook().retrieveOriginal().queue(x -> System.out.println("New rtz: id=" + x.getId()));
     }
 
@@ -343,7 +398,7 @@ public class UITools {
         return null;
     }
 
-    private static MessageEmbed createReminderEmbed(ModalInteractionEvent event) {
+    private static MessageEmbed createReminderEmbed(Interaction event) {
         ReminderSubmission reminderSubmission = reminderSumbissions.get(Objects.requireNonNull(event.getMember()).getId());
 
         MessageEmbed.AuthorInfo authorInfo = new MessageEmbed.AuthorInfo("New Reminder!", "", iconUrl, "");
@@ -356,9 +411,11 @@ public class UITools {
             allFields.add(descriptionField);
         }
 
-        String embedUrl = event.getGuildChannel().getJumpUrl();
-        if (event.getMessage() != null) {
-            embedUrl = event.getMessage().getJumpUrl();
+        String embedUrl = "";
+        if (event instanceof ButtonInteractionEvent bie) {
+            embedUrl = bie.getMessage().getJumpUrl();
+        } else if (event instanceof ModalInteractionEvent mie) {
+            embedUrl = Objects.requireNonNull(mie.getMessage()).getJumpUrl();
         }
 
         return new MessageEmbed(embedUrl, reminderSubmission.getSubject(), "", EmbedType.RICH,
