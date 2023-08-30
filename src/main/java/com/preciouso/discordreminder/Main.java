@@ -27,6 +27,21 @@ public class Main {
             throw new RuntimeException("No JDA_POSTGRES_PASSWORD exists in Environment Arguments! Exiting");
         }
 
+        String postgresHostname = System.getenv("JDA_POSTGRES_HOST");
+        if (postgresHostname == null || postgresHostname.isEmpty()) {
+            postgresHostname = "localhost";
+        }
+
+        String postgresPort = System.getenv("JDA_POSTGRES_PORT");
+        if (postgresPort == null || postgresPort.isEmpty()) {
+            postgresPort = "5432";
+        }
+
+        String postgresUsername = System.getenv("JDA_POSTGRES_USERNAME");
+        if (postgresUsername == null || postgresUsername.isEmpty()) {
+            postgresUsername = "postgres";
+        }
+
         String alertzyKey = System.getenv("JDA_ALERTZY_KEY");
         if ( !(alertzyKey == null || alertzyKey.isEmpty())) {
             JDAInstance.setAlertzyUrl(alertzyKey);
@@ -34,7 +49,7 @@ public class Main {
             System.out.println("No alertzy key defined");
         }
 
-        DatabaseInit databaseInit = new DatabaseInit(postgresPassword);
+        DatabaseInit databaseInit = new DatabaseInit(postgresHostname, postgresPort, postgresUsername, postgresPassword);
 
         JDAInstance.addDatabaseInit(databaseInit);
         JDAInstance.buildJda(discordToken);

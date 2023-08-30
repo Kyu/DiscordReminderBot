@@ -20,13 +20,14 @@ public class DatabaseInit {
     private Dao<Alert, String> alertDao;
     private Dao<User, String> userDao;
 
-    public DatabaseInit(String postgresPassword) throws SQLException, ClassNotFoundException {
-        this.connectionString = "jdbc:postgresql://" + "localhost:5432/" + postgresDatabase;
-        createDataSource(postgresPassword);
+    public DatabaseInit(String hostname, String port, String username, String password) throws SQLException {
+        this.connectionString = "jdbc:postgresql://" + hostname + ":" + port + "/" + postgresDatabase;
+        System.err.println(connectionString);
+        createDataSource(username, password);
     }
 
-    private void createDataSource (String password) throws SQLException, ClassNotFoundException {
-        dbConnectionSource = new JdbcConnectionSource(connectionString, "postgres", password);
+    private void createDataSource (String username, String password) throws SQLException {
+        dbConnectionSource = new JdbcConnectionSource(connectionString, username, password);
         setupDatabase();
     }
 

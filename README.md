@@ -3,8 +3,11 @@
 Written in Java using JDA, creates reminders for discord users.  
 
 
-## Setup  
+## Setup
 Create `JDA_DISCORD_TOKEN` environment variable using discord token.  
+Create `JDA_POSTGRES_HOST` environment variable for the postgres database.  
+Create `JDA_POSTGRES_PORT` environment variable for the postgres database.  
+Create `JDA_POSTGRES_USERNAME` environment variable for the postgres database.  
 Create `JDA_POSTGRES_PASSWORD` environment variable for the postgres database.  
 [Optional] Create `JDA_ALERTZY_KEY` for bot push notifications with [Alertzy](https://alertzy.app/)  
 

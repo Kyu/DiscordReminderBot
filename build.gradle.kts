@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.preciouso"
-version = "1.0-SNAPSHOT"
+version = "0.0.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -18,4 +18,22 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// https://stackoverflow.com/a/61373175/3875151
+tasks.withType<Jar> {
+    manifest {
+        attributes["Main-Class"] = "com.preciouso.discordreminder.Main"
+    }
+
+    // To avoid the duplicate handling strategy error
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    // To add all of the dependencies otherwise a "NoClassDefFoundError" error
+    from(sourceSets.main.get().output)
+
+    dependsOn(configurations.runtimeClasspath)
+    from({
+        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
+    })
 }
