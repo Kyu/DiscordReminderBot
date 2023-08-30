@@ -15,5 +15,9 @@ docker run  \
 -e POSTGRES_DB="reminder-bot"  \
 -p5432:5432  \
 -d postgres  
-```
+```  
+
+### Demo 
+
+https://www.youtube.com/watch?v=5lu6k1wUxH0
 

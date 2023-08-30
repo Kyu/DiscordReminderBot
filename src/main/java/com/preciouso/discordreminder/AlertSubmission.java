@@ -21,19 +21,19 @@ public class AlertSubmission {
     );
 
     public static final Map<String, Long> validTimeUnits = Map.ofEntries(
-            entry("Minutes", -60L),
-            entry("Minute", -60L),
-            entry("Mins", -60L),
-            entry("M", -60L),
+            entry("minutes", -60L),
+            entry("minute", -60L),
+            entry("mins", -60L),
+            entry("m", -60L),
 
-            entry("Hours", -3600L),
-            entry("Hour", -3600L),
-            entry("Hr", -3600L),
-            entry("H", -3600L),
+            entry("hours", -3600L),
+            entry("hour", -3600L),
+            entry("hr", -3600L),
+            entry("h", -3600L),
 
-            entry("Days", -24*3600L),
-            entry("D", -24*3600L),
-            entry("Day", -24*3600L)
+            entry("days", -24*3600L),
+            entry("day", -24*3600L),
+            entry("d", -24*3600L)
     );
 
     private boolean isValid = false;

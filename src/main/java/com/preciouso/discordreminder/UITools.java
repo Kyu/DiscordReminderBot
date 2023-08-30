@@ -99,7 +99,13 @@ public class UITools {
                 throw new RuntimeException(e);
             }
 
-            eventData.reply("You chose " + String.join(", ", eventData.getValues())).setEphemeral(true).queue();
+            if (eventData.getValues().isEmpty()) {
+                eventData.reply("Nothing chosen!").queue();
+            } else {
+                eventData.reply("You will be reminded about this event: " + String.join(", ", eventData.getValues()))
+                        .setEphemeral(true).queue();
+            }
+
             return null;
         };
 
@@ -127,10 +133,15 @@ public class UITools {
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
+            String units = eventData.getValues().get(0).getAsString();
 
-            ArrayList<String> alertValues = new ArrayList<>();
-            eventData.getValues().forEach(x -> alertValues.add(x.getAsString())); // TODO Aug 27 -- check if time units are valid (mins, hours, days)
-            eventData.reply("You picked " + String.join(", ", alertValues)).setEphemeral(true).queue();
+            if (AlertSubmission.validTimeUnits.containsKey(units.toLowerCase())) {
+                String num = eventData.getValues().get(1).getAsString();
+                eventData.reply("You will be reminded " + num + " " + units + " before this event.").queue();
+            } else {
+                eventData.reply("Invalid time unit chosen: **" + units + "**").queue();
+            }
+
             return null;
         };
 
@@ -175,7 +186,8 @@ public class UITools {
                 .setMaxLength(50) // or setRequiredRange(10, 100)
                 .build();
 
-        TextInput date = TextInput.create("date", "Date", TextInputStyle.SHORT)
+        TextInput date = TextInput.create("date", "Date", TextInputStyle.SHORT) // TODO auto populate date based on timezone
+                // todo warn on invalid timezone
                 .setPlaceholder("Date format: MM-DD-YYYY or MM-DD")
                 .setMinLength(5)
                 .setMaxLength(10)
