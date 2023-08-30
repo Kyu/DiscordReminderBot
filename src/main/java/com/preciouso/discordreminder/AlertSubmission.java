@@ -10,33 +10,44 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static java.util.Map.entry;
+
 public class AlertSubmission {
-    public static final Map<String, Long> defaultTimeOffsetValues = Map.of(
-            "on-time", 0L,
-            "12h-before", -12*3600L,
-            "1d-before", -24*3600L,
-            "7d-before", -24*7*3600L
+    public static final Map<String, Long> defaultTimeOffsetValues = Map.ofEntries(
+            entry("on-time", 0L),
+            entry("12h-before", -12*3600L),
+            entry("1d-before", -24*3600L),
+            entry("7d-before", -24*7*3600L)
     );
 
-    public static final Map<String, Long> validTimeUnits = Map.of(
-            "Minutes", -60L,
-            "Hours", -3600L,
-            "Days", -24*3600L
-            );
+    public static final Map<String, Long> validTimeUnits = Map.ofEntries(
+            entry("Minutes", -60L),
+            entry("Minute", -60L),
+            entry("Mins", -60L),
+            entry("M", -60L),
+
+            entry("Hours", -3600L),
+            entry("Hour", -3600L),
+            entry("Hr", -3600L),
+            entry("H", -3600L),
+
+            entry("Days", -24*3600L),
+            entry("D", -24*3600L),
+            entry("Day", -24*3600L)
+    );
 
     private boolean isValid = false;
-    private String alerterId;
+    private final String alerterId;
     private final ArrayList<Long> timeOffsets = new ArrayList<>();
-    private String messageId;
+    private final String messageId;
+
     public AlertSubmission(StringSelectInteractionEvent event) {
         alerterId = Objects.requireNonNull(event.getMember()).getId();
         messageId = Objects.requireNonNull(event.getMessage()).getId();
 
         for (String selection: event.getValues()) {
-            Long offset = defaultTimeOffsetValues.get(selection);
-            if (offset != null) {
-                timeOffsets.add(offset);
-            }
+            long offset = defaultTimeOffsetValues.get(selection) * 1000L;
+            timeOffsets.add(offset);
 
             isValid = true;
         }
@@ -49,17 +60,22 @@ public class AlertSubmission {
 
         if (event.getValues().size() >= 2) {
             Long timeOffset = validTimeUnits.get(event.getValues().get(0).getAsString());
-            int amountOfTime = -1;
             if (timeOffset != null) {
-                try {
-                    amountOfTime = Integer.parseInt(event.getValues().get(1).getAsString());
-                } catch (NumberFormatException ignored) {}
+                timeOffset *= 1000L;
+            } else {
+                timeOffset = 1000L; // this makes sure its cancelled
+            }
 
-                if (amountOfTime > 0) {
-                    long finalTimeOffset = amountOfTime * timeOffset;
-                    timeOffsets.add(finalTimeOffset);
-                    isValid = true;
-                }
+            int amountOfTime = -1;
+            try {
+                amountOfTime = Integer.parseInt(event.getValues().get(1).getAsString());
+            } catch (NumberFormatException ignored) {
+            }
+
+            if (amountOfTime >= 0 && timeOffset <= 0) {
+                long finalTimeOffset = amountOfTime * timeOffset;
+                timeOffsets.add(finalTimeOffset);
+                isValid = true;
             }
         }
     }

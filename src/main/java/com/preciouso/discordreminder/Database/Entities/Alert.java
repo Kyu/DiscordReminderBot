@@ -11,23 +11,24 @@ import com.preciouso.discordreminder.Database.DatabaseInit;
 
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
+import java.util.*;
 
 
 @DatabaseTable(tableName = "alerts")
 public class Alert {
     private final static String REMINDER_FIELD_NAME = "reminder";
-    private final static String TIME_FIELD_NAME = "time";
-    @DatabaseField(id = true, unique = true, uniqueIndex = true, columnName = TIME_FIELD_NAME)
+    public final static String TIME_FIELD_NAME = "time";
+    public final static String FULFILLED_FIELD_NAME = "fulfilled";
+
+    @DatabaseField(id = true)
+    private UUID id;
+    @DatabaseField(columnName = TIME_FIELD_NAME, uniqueCombo = true)
     private Date time;
 
-    @DatabaseField(foreign = true, columnName = REMINDER_FIELD_NAME)
+    @DatabaseField(foreign = true, columnName = REMINDER_FIELD_NAME, uniqueCombo = true)
     private Reminder reminder;
 
-    @DatabaseField
+    @DatabaseField(columnName = FULFILLED_FIELD_NAME)
     private boolean fulfilled;
 
     @DatabaseField(dataType = DataType.SERIALIZABLE)
@@ -36,6 +37,7 @@ public class Alert {
     public Alert() {}
 
     public Alert(Date time, Reminder reminder, HashSet<String> subscribedUsers) {
+        this.id = UUID.randomUUID();
         this.time = time;
         this.reminder = reminder;
         this.subscribedUsers = subscribedUsers;
@@ -43,6 +45,7 @@ public class Alert {
     }
 
     public Alert(Date time, Reminder reminder, boolean fulfilled, HashSet<String> subscribedUsers) {
+        this.id = UUID.randomUUID();
         this.time = time;
         this.reminder = reminder;
         this.fulfilled = fulfilled;
@@ -63,12 +66,15 @@ public class Alert {
 
 
             for (long alertOffset: alertSubmission.getTimeOffsets()) {
-                long alertTime = foundReminder.getReminderTime().getTime() + alertOffset;
+                long alertTime = foundReminder.getReminderTime().getTime() + alertOffset; // for the .before check
+                if (alertOffset == 0L) {
+                    alertTime -= 1L; // can also check on LX if alertDate == alertTime
+                }
                 Date alertDate = new Date(alertTime);
 
                 QueryBuilder<Alert, String> alertQb = database.getAlertDao().queryBuilder();
 
-                if (alertDate.after(now) && alertDate.before(foundReminder.getReminderTime())) {
+                if (alertDate.after(now) && alertDate.before(foundReminder.getReminderTime())) { // LX
                     Where<Alert, String> whereAlertQb = alertQb.where();
 
                     whereAlertQb.eq(Alert.REMINDER_FIELD_NAME, foundReminder);
@@ -95,6 +101,10 @@ public class Alert {
         return alertList;
     }
 
+    public UUID getId() {
+        return id;
+    }
+
     public Date getTime() {
         return time;
     }
@@ -103,11 +113,11 @@ public class Alert {
         this.time = time;
     }
 
-    public Reminder getReminderId() {
+    public Reminder getReminder() {
         return reminder;
     }
 
-    public void setReminderId(Reminder reminder) {
+    public void setReminder(Reminder reminder) {
         this.reminder = reminder;
     }
 
@@ -129,6 +139,6 @@ public class Alert {
 
     @Override
     public String toString() {
-        return "Alert [Time=" + time + ", reminder=" + reminder + ", subscribedUsers=" + subscribedUsers + "]";
+        return "Alert [Id=" + id + ", time=" + time +  ", subscribedUsers=" + subscribedUsers + ", reminder=" + reminder + "]";
     }
 }

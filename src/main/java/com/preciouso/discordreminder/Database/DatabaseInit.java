@@ -15,9 +15,7 @@ import java.sql.SQLException;
 public class DatabaseInit {
     private final String connectionString;
     private final String postgresDatabase = "reminder-bot";
-
     private ConnectionSource dbConnectionSource;
-
     private Dao<Reminder, String> reminderDao;
     private Dao<Alert, String> alertDao;
     private Dao<User, String> userDao;

@@ -74,14 +74,13 @@ public class UITools {
         return true;
     }
 
+    // TODO Aug 29 -- allow users to remove themselves
     private static void registerTimeSelectionDropdown() {
-        String[] defaultTimeOffsets = AlertSubmission.defaultTimeOffsetValues.keySet().toArray(new String[4]);
-
         // ---- Select dropdown of when a user wants to be reminded ---- \\
-        SelectOption onTimeOption = SelectOption.of("On Time", defaultTimeOffsets[0]).withDescription("Sets a reminder at the exact time.");
-        SelectOption twelveHoursOption = SelectOption.of("12 hours before", defaultTimeOffsets[1]).withDescription("Sets a reminder 12 hours before.");
-        SelectOption oneDayOption = SelectOption.of("1 day before", defaultTimeOffsets[2]).withDescription("Sets a reminder 1 day before.");
-        SelectOption sevenDaysOption = SelectOption.of("7 days before", defaultTimeOffsets[3]).withDescription("Sets a reminder 7 days before.");
+        SelectOption onTimeOption = SelectOption.of("On Time", "on-time").withDescription("Sets a reminder at the exact time.");
+        SelectOption twelveHoursOption = SelectOption.of("12 hours before", "12h-before").withDescription("Sets a reminder 12 hours before.");
+        SelectOption oneDayOption = SelectOption.of("1 day before", "1d-before").withDescription("Sets a reminder 1 day before.");
+        SelectOption sevenDaysOption = SelectOption.of("7 days before", "7d-before").withDescription("Sets a reminder 7 days before.");
 
         List<SelectOption> selectOptionsList = Arrays.asList(onTimeOption, twelveHoursOption, oneDayOption, sevenDaysOption);
 
@@ -109,6 +108,7 @@ public class UITools {
         MessageInteractionCallbackStore.registerStringSelectDropDown(selectReminderTimeMenu.getId(), selectReminderTimeMenu);
     }
 
+    // TODO Aug 29 -- tell user what they chose to get this reminder
     private static void registerCustomTimeSelectionModal() {
         // ---- Select button with custom input of when a user wants to be reminded ---- \\
 
@@ -136,7 +136,7 @@ public class UITools {
 
         TextInput timeUnit = TextInput.create("time-unit", "Unit of Time", TextInputStyle.SHORT)
                 .setPlaceholder("Minutes/Hours/Days")
-                .setMinLength(4)
+                .setMinLength(1)
                 .setMaxLength(7) // or setRequiredRange(10, 100)
                 .build();
 
@@ -152,8 +152,6 @@ public class UITools {
     }
 
     // TODO Aug 25 -- register selectmenus, registerselectbuttons, register new timezone selectmenu
-    // TODO Aug 25 -- do saving reminder to database
-    // TODO Aug 25 -- do actually reminding users
     // TODO Aug 25 -- do editing past reminders
     private static void registerNewReminderModal() {
         registerTimeSelectionDropdown();
@@ -229,7 +227,7 @@ public class UITools {
                 reminderSumbissions.put(Objects.requireNonNull(eventData.getMember()).getId(), submission);
                 registerTimeZoneForNewReminder(eventData);
 
-                eventData.getHook().retrieveOriginal().queue(x -> System.out.println("New Submission: id=" + x.getId()));
+                // eventData.getHook().retrieveOriginal().queue(x -> System.out.println("New Submission: id=" + x.getId()));
             }
 
             return null;
@@ -275,13 +273,12 @@ public class UITools {
                         }
                     });
 
-                    // TODO Aug 29 -- set timezone in database
                     eventData.reply("")
                             .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
                             .addActionRow(selectTimesButton)
                             .addEmbeds(createReminderEmbed(eventData))
                             .queue();
-                    eventData.getHook().retrieveOriginal().queue(x -> System.out.println("New tzPick: id=" + x.getId()));
+                    // eventData.getHook().retrieveOriginal().queue(x -> System.out.println("New tzPick: id=" + x.getId()));
                 }
             } else {
                 eventData.reply("Could not find a valid timezone for **" + m.getAsString() + "**.")
@@ -327,7 +324,7 @@ public class UITools {
                 .setEphemeral(true)
                 .queue();
 
-        event.getHook().retrieveOriginal().queue(x -> System.out.println("New rtz: id=" + x.getId()));
+        // event.getHook().retrieveOriginal().queue(x -> System.out.println("New rtz: id=" + x.getId()));
     }
 
     private static MessageEmbed createAskDateTimeDropDown(ModalInteractionEvent event, LocalDateTime dateTimeInfo) {

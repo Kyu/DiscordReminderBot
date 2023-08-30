@@ -11,7 +11,8 @@ import java.util.UUID;
 @DatabaseTable(tableName = "reminders")
 public class Reminder {
     public static final String ORIGINAL_MESSAGE_ID_FIELD_NAME = "originalMessageId";
-    @DatabaseField(id = true)
+    public static final String ID_FIELD_NAME = "id";
+    @DatabaseField(id = true, columnName = ID_FIELD_NAME)
     private UUID id;
 
     @DatabaseField

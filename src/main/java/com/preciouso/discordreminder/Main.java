@@ -3,8 +3,16 @@ package com.preciouso.discordreminder;
 import com.preciouso.discordreminder.Database.DatabaseInit;
 
 import java.sql.SQLException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Main {
+    private static final ScheduledExecutorService scheduler =
+            Executors.newScheduledThreadPool(1);
     public static void main(String[] args) throws SQLException, ClassNotFoundException {
         String discordToken = System.getenv("JDA_DISCORD_TOKEN");
         if (discordToken == null || discordToken.isEmpty()) {
@@ -23,6 +31,20 @@ public class Main {
 
         JDAInstance.addDatabaseInit(databaseInit);
         JDAInstance.buildJda(discordToken);
+
+        final AlertChecker alertChecker = new AlertChecker(10);
+        final AlertFulfilment alertFulfilment = new AlertFulfilment(5);
+
+        // https://math.stackexchange.com/a/2210615/689853
+
+
+        final ScheduledFuture<?> alertCheckerHandle =
+                scheduler.scheduleAtFixedRate(alertChecker, 0, 1, MINUTES);
+
+        final ScheduledFuture<?> alertFulfilmentHandle =
+                scheduler.scheduleAtFixedRate(alertFulfilment, 0, 10, SECONDS);
+
+        // scheduler.schedule(() -> { beeperHandle.cancel(true); }, 60 * 60, SECONDS);
 
         UITools.loadUI();
     }
