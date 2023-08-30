@@ -1,12 +1,10 @@
 package com.preciouso.discordreminder;
 
-import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.stmt.QueryBuilder;
 import com.j256.ormlite.stmt.Where;
 import com.preciouso.discordreminder.Database.DatabaseInit;
 import com.preciouso.discordreminder.Database.Entities.Alert;
 import com.preciouso.discordreminder.Database.Entities.Reminder;
-import net.dv8tion.jda.api.JDA;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
