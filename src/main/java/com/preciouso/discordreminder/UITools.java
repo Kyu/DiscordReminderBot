@@ -268,14 +268,11 @@ public class UITools {
                     }
                 });
 
-                if (reminderSumbissions.containsKey(Objects.requireNonNull(eventData.getMember()).getId())) {
-                    eventData.reply("")
-                            .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
-                            .addActionRow(selectTimesButton)
-                            .addEmbeds(createReminderEmbed(eventData))
-                            .queue(x -> reminderSumbissions.remove(eventData.getMember().getId()));
-                } else {
-                }
+                eventData.reply("")
+                        .addActionRow(MessageInteractionCallbackStore.getStringSelectDropdown("choose-time"))
+                        .addActionRow(selectTimesButton)
+                        .addEmbeds(createReminderEmbed(eventData))
+                        .queue(x -> reminderSumbissions.remove(eventData.getMember().getId()));
             }
 
             return null;
