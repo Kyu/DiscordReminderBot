@@ -27,6 +27,13 @@ public class Main {
             throw new RuntimeException("No JDA_POSTGRES_PASSWORD exists in Environment Arguments! Exiting");
         }
 
+        String alertzyKey = System.getenv("JDA_ALERTZY_KEY");
+        if ( !(alertzyKey == null || alertzyKey.isEmpty())) {
+            JDAInstance.setAlertzyUrl(alertzyKey);
+        } else {
+            System.out.println("No alertzy key defined");
+        }
+
         DatabaseInit databaseInit = new DatabaseInit(postgresPassword);
 
         JDAInstance.addDatabaseInit(databaseInit);
