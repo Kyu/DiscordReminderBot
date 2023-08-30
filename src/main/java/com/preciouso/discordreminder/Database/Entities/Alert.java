@@ -37,11 +37,7 @@ public class Alert {
     public Alert() {}
 
     public Alert(Date time, Reminder reminder, HashSet<String> subscribedUsers) {
-        this.id = UUID.randomUUID();
-        this.time = time;
-        this.reminder = reminder;
-        this.subscribedUsers = subscribedUsers;
-        this.fulfilled = false;
+        this(time, reminder, false, subscribedUsers);
     }
 
     public Alert(Date time, Reminder reminder, boolean fulfilled, HashSet<String> subscribedUsers) {

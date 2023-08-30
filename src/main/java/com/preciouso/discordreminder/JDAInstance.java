@@ -18,8 +18,7 @@ import org.jetbrains.annotations.NotNull;
 public class JDAInstance implements EventListener {
     private static JDA jda;
     private static DatabaseInit database;
-    public static final String permissionsInteger = "826781322304"; // https://discord.com/api/oauth2/authorize?client_id=826781322304&permissions=536870912&scope=bot%20applications.commands
-
+    public static final String permissionsInteger = "826781322304"; // https://discord.com/oauth2/authorize?client_id=1144323688192290826&permissions=536870912&scope=bot%20applications.commands
     public static JDA getJDA() {
         return jda;
     }

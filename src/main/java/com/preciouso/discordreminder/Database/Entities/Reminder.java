@@ -33,12 +33,7 @@ public class Reminder {
     public Reminder() {}
 
     public Reminder(String subject, String description, Date reminderTime, String originalMessageId, String creatorId) {
-        this.id = UUID.randomUUID();
-        this.subject = subject;
-        this.description = description;
-        this.reminderTime = reminderTime;
-        this.originalMessageId = originalMessageId;
-        this.creatorId = creatorId;
+        this(UUID.randomUUID(), subject, description, reminderTime, originalMessageId, creatorId);
     }
 
     public Reminder(UUID uuid, String subject, String description, Date reminderTime, String originalMessageId, String creatorId) {
